@@ -22,19 +22,24 @@
 
 // External headers
 
+
 // Internal headers
-#include <tm.h>
+#include <tm.hpp>
 #include "word.hpp"
 #include "dual_stm.hpp"
 #include "macros.h"
-#include "transaction.hpp"
+#include "segment.hpp"
+#include "batcher.hpp"
+#include "iostream"
+
 
 /** Create (i.e. allocate + init) a new shared memory region, with one first non-free-able allocated segment of the requested size and alignment.
  * @param size  Size of the first shared segment of memory to allocate (in bytes), must be a positive multiple of the alignment
  * @param align Alignment (in bytes, must be a power of 2) that the shared memory region must support
  * @return Opaque shared memory region handle, 'invalid_shared' on failure
 **/
-shared_t tm_create(size_t size, size_t align) {
+shared_t tm_create(size_t size, size_t align) noexcept {
+    std::cout<<"Hello World!"<<std::flush;
     DualStm* stm = new DualStm(size, align);
     return stm;
 }
@@ -42,7 +47,7 @@ shared_t tm_create(size_t size, size_t align) {
 /** Destroy (i.e. clean-up + free) a given shared memory region.
  * @param shared Shared memory region to destroy, with no running transaction
 **/
-void tm_destroy(shared_t shared) {
+void tm_destroy(shared_t shared) noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     delete stm;
 }
@@ -51,7 +56,7 @@ void tm_destroy(shared_t shared) {
  * @param shared Shared memory region to query
  * @return Start address of the first allocated segment
 **/
-void* tm_start(shared_t shared) {
+void* tm_start(shared_t shared)noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     return stm->getHead();
 }
@@ -60,7 +65,7 @@ void* tm_start(shared_t shared) {
  * @param shared Shared memory region to query
  * @return First allocated segment size
 **/
-size_t tm_size(shared_t shared) {
+size_t tm_size(shared_t shared)noexcept{
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     return stm->getSize();
 }
@@ -69,7 +74,7 @@ size_t tm_size(shared_t shared) {
  * @param shared Shared memory region to query
  * @return Alignment used globally
 **/
-size_t tm_align(shared_t shared) {
+size_t tm_align(shared_t shared)noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     return stm->alignment;
 }
@@ -79,7 +84,7 @@ size_t tm_align(shared_t shared) {
  * @param is_ro  Whether the transaction is read-only
  * @return Opaque transaction ID, 'invalid_tx' on failure
 **/
-tx_t tm_begin(shared_t shared, bool is_ro) {
+tx_t tm_begin(shared_t shared, bool is_ro) noexcept{
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* tx = stm->begin(is_ro);
     tx_t res = reinterpret_cast<tx_t>(tx);
@@ -91,7 +96,7 @@ tx_t tm_begin(shared_t shared, bool is_ro) {
  * @param tx     Transaction to end
  * @return Whether the whole transaction committed
 **/
-bool tm_end(shared_t shared, tx_t tx) {
+bool tm_end(shared_t shared, tx_t tx)noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
     bool committed = stm->end(t);
@@ -106,7 +111,7 @@ bool tm_end(shared_t shared, tx_t tx) {
  * @param target Target start address (in a private region)
  * @return Whether the whole transaction can continue
 **/
-bool tm_read(shared_t shared, tx_t tx, void const* source, size_t size, void* target) {
+bool tm_read(shared_t shared, tx_t tx, void const* source, size_t size, void* target)noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
     bool can_continue = stm->read(t, source, size, target);
@@ -121,7 +126,7 @@ bool tm_read(shared_t shared, tx_t tx, void const* source, size_t size, void* ta
  * @param target Target start address (in the shared region)
  * @return Whether the whole transaction can continue
 **/
-bool tm_write(shared_t shared, tx_t tx, void const* source, size_t size, void* target) {
+bool tm_write(shared_t shared, tx_t tx, void const* source, size_t size, void* target)noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
     bool can_continue = stm->write(t, source, size, target);
@@ -135,14 +140,14 @@ bool tm_write(shared_t shared, tx_t tx, void const* source, size_t size, void* t
  * @param target Pointer in private memory receiving the address of the first byte of the newly allocated, aligned segment
  * @return Whether the whole transaction can continue (success/nomem), or not (abort_alloc)
 **/
-alloc_t tm_alloc(shared_t shared, tx_t tx, size_t size, void** target) {
+Alloc tm_alloc(shared_t shared, tx_t tx, size_t size, void** target) noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
     bool can_continue = stm -> alloc(t, size, target);
     if (can_continue){
-        return success_alloc;
+        return Alloc(0);
     }else{
-        return abort_alloc;
+        return Alloc(1);
     }
 }
 
@@ -152,7 +157,7 @@ alloc_t tm_alloc(shared_t shared, tx_t tx, size_t size, void** target) {
  * @param target Address of the first byte of the previously allocated segment to deallocate
  * @return Whether the whole transaction can continue
 **/
-bool tm_free(shared_t shared, tx_t tx, void* target) {
+bool tm_free(shared_t shared, tx_t tx, void* target) noexcept{
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
     bool can_continue = stm->free(t, target);
