@@ -1,6 +1,7 @@
 #include "segment.hpp"
 #include "word.hpp"
 #include "transaction.hpp"
+#include <string.h>
 
 Segment::Segment(std::size_t i_alignment, std::size_t i_num_words, std::size_t i_start_address):
         alignment(i_alignment), num_words(i_num_words), start_address(i_start_address)
@@ -20,10 +21,10 @@ Segment::~Segment(){
 
 
 bool Segment::read(std::size_t start_word_idx, std::size_t num_words, Transaction* tx, void* target){
-    
+    char* out_buffer = static_cast<char*>(target);
     for (std::size_t i = 0; i < num_words; i++){
         std::size_t offset = i * alignment;
-        bool result = words[start_word_idx + i]->read(tx, target + offset);
+        bool result = words[start_word_idx + i]->read(tx, out_buffer + offset);
         if (result == false){
             return false;
         }
@@ -31,10 +32,12 @@ bool Segment::read(std::size_t start_word_idx, std::size_t num_words, Transactio
     return true;
 }
 
-bool Segment::write(std::size_t start_word_idx, std::size_t num_words, Transaction* tx, void* source){
+bool Segment::write(std::size_t start_word_idx, std::size_t num_words, Transaction* tx, void const * source){
+    char in_buffer[num_words * alignment];
+    memcpy(in_buffer, source, num_words*alignment);
     for (std::size_t i = 0; i < num_words; i++){
         std::size_t offset = i * alignment;
-        bool result = words[start_word_idx + i]->write(tx, source + offset);
+        bool result = words[start_word_idx + i]->write(tx, in_buffer + offset);
         if (result == false){
             return false;
         }

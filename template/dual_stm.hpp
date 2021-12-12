@@ -29,6 +29,9 @@ class DualStm{
         // the requested size and alignment.
         // Initializes also the batcher
         DualStm(std::size_t size, std::size_t alignment);
+        
+        // deallocate all segments
+        ~DualStm();
 
         // allocates new segment, increments atomically end_address and adds the segment to the allocated 
         // segments in the transaction. If at the end the transaction is committed, the allocated segments are
@@ -65,14 +68,14 @@ class DualStm{
         // target is output buffer that has to be written
         // size: length to copy in bytes
         //Returns: true: the transaction can continue, false: the transaction has aborted
-        bool read(Transaction* tx, void * const source, std::size_t size, void* target);
+        bool read(Transaction* tx, void const *  source, std::size_t size, void* target);
 
         // Write operation in the transaction, source in a private region and target in the shared region.
         // source is the input buffer
         // size: length to copy in bytes
         // target: start address
         // Returns: true: the transaction can continue, false: the transaction has aborted
-        bool write(Transaction* tx, void * const source, std::size_t size, void * target);
+        bool write(Transaction* tx, void const * source, std::size_t size, void * target);
 
         // adds start_address of segment (contained in target) to list of segments to free in transaction
         bool free(Transaction* tx, void* target);

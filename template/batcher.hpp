@@ -46,6 +46,8 @@ class Batcher{
     public:
         Batcher(DualStm* i_dual_stm):stm(i_dual_stm){};
 
+        ~Batcher();
+
         // transaction begins
         Transaction* enter(bool is_read_only);
 

@@ -102,7 +102,13 @@ bool Word::write(Transaction* tx, void const* source){
     }
 }
 
-
+// called at the end of an epoch to update readable/writable copy
+// reset the access set and written condition, swap readable/writable copy if written
 void Word::updateState(){
-    //TODO implement
+    if (written){
+        is_copy_a_readable = !is_copy_a_readable;
+    }
+    written = false;
+    last_tx_accessed = 0;
+    accessed_by_many = false;
 }

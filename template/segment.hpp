@@ -23,7 +23,7 @@ class Segment{
         bool read(std::size_t start_word_idx, std::size_t num_words, Transaction* tx, void* target);
         
         // Returns: true: the transaction can continue, false: the transaction has aborted
-        bool write(std::size_t start_word_idx, std::size_t num_words, Transaction* tx, void* source);
+        bool write(std::size_t start_word_idx, std::size_t num_words, Transaction* tx, void const* source);
     
 
 };

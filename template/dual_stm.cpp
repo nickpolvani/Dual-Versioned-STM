@@ -3,7 +3,7 @@
 #include "batcher.hpp"
 #include "transaction.hpp"
 #include <assert.h>
-
+#include <string.h>
 
 // Create (i.e. allocate + init) a new shared memory region, with one first allocated segment of
 // the requested size and alignment.
@@ -17,6 +17,14 @@ alignment(i_alignment), size_first_segment(i_size){
     segments[start_address] = segment;
     addresses[end_address] = start_address;
     batcher = new Batcher(this);
+}
+
+// deallocate all segments, delete Batcher
+DualStm::~DualStm(){
+    for (auto it = segments.begin(); it != segments.end(); it++){
+        delete it->second;
+    }
+    delete batcher;
 }
 
 // Get a pointer in shared memory to the first allocated segment of the shared memory region
@@ -76,7 +84,7 @@ Transaction* DualStm::begin(bool is_read_only){
 // target is output buffer that has to be written
 // size: length to copy in bytes
 // Returns: true: the transaction can continue, false: the transaction has aborted
-bool DualStm::read(Transaction* tx, void * const source, std::size_t size, void* target){
+bool DualStm::read(Transaction* tx, void const * source, std::size_t size, void* target){
     std::size_t addr = reinterpret_cast<std::size_t>(source);
     Segment* sg = findSegment(addr, tx);
     std::size_t start_word_idx = (addr - sg->start_address) / alignment;
@@ -94,7 +102,7 @@ bool DualStm::read(Transaction* tx, void * const source, std::size_t size, void*
 // size: length to copy in bytes
 // target: start address
 // Returns: true: the transaction can continue, false: the transaction has aborted
-bool DualStm::write(Transaction* tx, void * const source, std::size_t size, void * target){
+bool DualStm::write(Transaction* tx, void const* source, std::size_t size, void * target){
     std::size_t addr = reinterpret_cast<std::size_t>(target);
     Segment* sg = findSegment(addr, tx);
     std::size_t start_word_idx = (addr - sg->start_address) / alignment;
@@ -115,6 +123,7 @@ bool DualStm::alloc(Transaction* tx, std::size_t size, void ** target){
     std::size_t num_words = size / alignment;
     Segment* segment = new Segment(alignment, num_words, start_address);
     tx -> addSegment(segment, start_address);
+    memcpy(target, &start_address, sizeof(void*));
     return true;
 }
 

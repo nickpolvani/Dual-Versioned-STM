@@ -3,9 +3,23 @@
 #include "dual_stm.hpp"
 #include "word.hpp"
 
+
+Batcher::~Batcher(){
+    for (auto b : blocked){
+        delete b;
+    }
+    for (auto tx : committed_transactions){
+        delete tx;
+    }
+    for (auto tx : aborted_transactions){
+        delete tx;
+    }
+}
+
+
 Transaction* Batcher::enter(bool is_read_only){
     std::unique_lock<std::mutex> lock(mutex);
-    if (remaining = 0){
+    if (remaining == 0){
         remaining = 1;
         Transaction * tx = new Transaction(is_read_only, 1);
         return tx;
