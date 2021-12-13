@@ -22,16 +22,18 @@
 
 // External headers
 
+#include "debug.hpp"
 
 // Internal headers
+
 #include <tm.hpp>
 #include "word.hpp"
 #include "dual_stm.hpp"
 #include "macros.h"
+#include "transaction.hpp"
 #include "segment.hpp"
+#include "transaction.hpp"
 #include "batcher.hpp"
-#include "iostream"
-#include "debug.hpp"
 
 
 /** Create (i.e. allocate + init) a new shared memory region, with one first non-free-able allocated segment of the requested size and alignment.
@@ -41,8 +43,7 @@
 **/
 shared_t tm_create(size_t size, size_t align) noexcept {
     DualStm* stm = new DualStm(size, align);
-    DEBUG_MSG("Successfully Created STM");
-    return reinterpret_cast<shared_t>(stm);
+    return stm;
 }
 
 /** Destroy (i.e. clean-up + free) a given shared memory region.
@@ -115,6 +116,7 @@ bool tm_end(shared_t shared, tx_t tx)noexcept {
 bool tm_read(shared_t shared, tx_t tx, void const* source, size_t size, void* target)noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
+    DEBUG_MSG("Transaction " << t->tr_num << " reading");
     bool can_continue = stm->read(t, source, size, target);
     return can_continue;
 }
@@ -130,6 +132,8 @@ bool tm_read(shared_t shared, tx_t tx, void const* source, size_t size, void* ta
 bool tm_write(shared_t shared, tx_t tx, void const* source, size_t size, void* target)noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
+    DEBUG_MSG("Transaction " << t->tr_num << " writing");
+
     bool can_continue = stm->write(t, source, size, target);
     return can_continue;
 }
@@ -144,6 +148,8 @@ bool tm_write(shared_t shared, tx_t tx, void const* source, size_t size, void* t
 Alloc tm_alloc(shared_t shared, tx_t tx, size_t size, void** target) noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
+    DEBUG_MSG("Transaction " << t->tr_num << " allocating");
+
     bool can_continue = stm -> alloc(t, size, target);
     if (can_continue){
         return Alloc(0);
@@ -161,6 +167,7 @@ Alloc tm_alloc(shared_t shared, tx_t tx, size_t size, void** target) noexcept {
 bool tm_free(shared_t shared, tx_t tx, void* target) noexcept{
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
+    DEBUG_MSG("Transaction " << t->tr_num << " freeing");
     bool can_continue = stm->free(t, target);
     return can_continue;
 }
