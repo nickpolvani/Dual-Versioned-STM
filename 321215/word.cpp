@@ -12,9 +12,12 @@ alignment(i_alignment){
 }
 
 // add transaction to "access set" if not already in
-void Word::addToAccessSet(Transaction* tx){
-    std::unique_lock lock(access_set_mutex);
-    if (last_tx_accessed == 0){
+void Word::addToAccessSet(Transaction* tx, bool writing){
+    std::unique_lock<std::mutex> lock(access_set_mutex);
+    if (writing){
+        written = true;
+    }
+    if (last_tx_accessed == 0){  // first transaction accessing       
         last_tx_accessed = tx -> tr_num;
         tx -> accessed.push_back(this);
     }
@@ -28,27 +31,49 @@ void Word::addToAccessSet(Transaction* tx){
 }
 
 
+// if readable=True read readable copy
+// else read the writable one
+void Word::readCopy(void* target, bool readable){
+    if (readable){
+        if(is_copy_a_readable){ // read readable copy
+            memcpy(target, copy_a, alignment);
+        }
+        else{
+            memcpy(target, copy_b, alignment);
+        }
+    }
+    else{   // read writable copy
+        if(!is_copy_a_readable){
+            memcpy(target, copy_a, alignment);
+        }
+        else{
+            memcpy(target, copy_b, alignment);
+        }
+    }
+}
+
+
+// write content of buffer source into writable copy
+void Word::writeCopy(void const* source){
+    if(!is_copy_a_readable){
+        memcpy(copy_a, source, alignment);
+    }else{
+        memcpy(copy_b, source, alignment);
+    }
+}
+
 
 bool Word::read(Transaction* tx, void* target){
     if (tx -> is_read_only){
-        if(is_copy_a_readable){
-            memcpy(target, copy_a, alignment);
-        }else{
-            memcpy(target, copy_b, alignment);
-        }
+        readCopy(target, true);
         return true;
     }
     // tx is not read_only
     else{
-
         if (written){
             if (last_tx_accessed == tx->tr_num){
                 // read writable copy into target
-                if(!is_copy_a_readable){
-                    memcpy(target, copy_a, alignment);
-                }else{
-                    memcpy(target, copy_b, alignment);
-                }
+                readCopy(target, false);
                 return true;
             }
             else{
@@ -59,12 +84,8 @@ bool Word::read(Transaction* tx, void* target){
         // word not written, non read-only transaction
         else{
             // read readable copy into target
-            if(is_copy_a_readable){
-                memcpy(target, copy_a, alignment);
-            }else{
-                memcpy(target, copy_b, alignment);
-            }
-            addToAccessSet(tx);
+            addToAccessSet(tx, false);
+            readCopy(target, true);
             return true;
         }
 
@@ -76,11 +97,7 @@ bool Word::write(Transaction* tx, void const* source){
     if (written){
         if (last_tx_accessed == tx -> tr_num){
             // write content at source into the writable copy
-            if(!is_copy_a_readable){
-                memcpy(copy_a, source, alignment);
-            }else{
-                memcpy(copy_b, source, alignment);
-            }
+            writeCopy(source);
             return true;
         }
         else{
@@ -95,17 +112,13 @@ bool Word::write(Transaction* tx, void const* source){
         }
         else{
             // write content at source into the writable copy
-            if(!is_copy_a_readable){
-                memcpy(copy_a, source, alignment);
-            }else{
-                memcpy(copy_b, source, alignment);
-            }
-            addToAccessSet(tx);
-            written = true;
+            addToAccessSet(tx, true);
+            writeCopy(source);
             return true;
         }
     }
 }
+
 
 // called at the end of an epoch to update readable/writable copy
 // reset the access set and written condition, swap readable/writable copy if written

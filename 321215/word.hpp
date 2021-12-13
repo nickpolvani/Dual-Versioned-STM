@@ -9,9 +9,16 @@ class Transaction;
 class Word{
     private:
         std::mutex access_set_mutex;
-    
+        
         char * copy_a;
         char * copy_b;
+
+        // if readable=True read readable copy
+        // else read the writable one
+        void readCopy(void* target, bool readable);
+
+        // write content of buffer source into writable copy
+        void writeCopy(void const* source);
 
 
     public:
@@ -39,11 +46,14 @@ class Word{
 
         bool write(Transaction* tx, void const* source);
 
-        void addToAccessSet(Transaction* tx);
+        void addToAccessSet(Transaction* tx, bool writing);
 
         // called at the end of an epoch to update readable/writable copy
         // reset the access set and written condition, swap readable/writable copy if written
         void updateState();
+
+
+        
 
 };
 

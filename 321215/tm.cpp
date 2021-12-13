@@ -34,6 +34,7 @@
 #include "segment.hpp"
 #include "transaction.hpp"
 #include "batcher.hpp"
+#include <iostream>
 
 
 /** Create (i.e. allocate + init) a new shared memory region, with one first non-free-able allocated segment of the requested size and alignment.
@@ -148,7 +149,7 @@ bool tm_write(shared_t shared, tx_t tx, void const* source, size_t size, void* t
 Alloc tm_alloc(shared_t shared, tx_t tx, size_t size, void** target) noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
-    DEBUG_MSG("Transaction " << t->tr_num << " allocating");
+    std::cout<<"Transaction " << t->tr_num << " allocating" << "\n";
 
     bool can_continue = stm -> alloc(t, size, target);
     if (can_continue){
@@ -167,7 +168,7 @@ Alloc tm_alloc(shared_t shared, tx_t tx, size_t size, void** target) noexcept {
 bool tm_free(shared_t shared, tx_t tx, void* target) noexcept{
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
-    DEBUG_MSG("Transaction " << t->tr_num << " freeing");
+    std::cout<<"Transaction " << t->tr_num << " freeing" << "\n";
     bool can_continue = stm->free(t, target);
     return can_continue;
 }

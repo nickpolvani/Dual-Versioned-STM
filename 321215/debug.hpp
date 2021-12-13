@@ -5,7 +5,7 @@
 
 #ifdef DEBUG
 #include <iostream>
-#define DEBUG_MSG(str) do { std::cout << str << std::endl << std::flush; } while( false )
+#define DEBUG_MSG(str) do { std::cout << str << "\n"; } while( false )
 #else
 #define DEBUG_MSG(str) do { } while ( false )
 #endif

@@ -54,6 +54,7 @@ void Batcher::leave(Transaction* tx){
         }
     }
     if (remaining == 0){
+        DEBUG_MSG("Ending epoch " << counter);
         onEpochEnd();
         counter ++;
         remaining = blocked.size();
