@@ -4,6 +4,7 @@
 #include "segment.hpp"
 #include <map>
 #include <vector>
+#include "debug.hpp"
 
 class Segment;
 class Word;
@@ -11,6 +12,8 @@ class Word;
 class Transaction{
 
     public:
+        bool has_written = false;
+
         // allocated[start_address] returns the corresponding Segment
         std::map<std::size_t, Segment*> allocated;
 
@@ -65,6 +68,7 @@ class Transaction{
         // do not destroy written words, because some of them may be already allocated in the STM
         // and the ones that are not are destroyed with allocated segments
         ~Transaction(){
+            DEBUG_MSG("Inside destructor of transaction: " << tr_num);
             if (aborted){
                 for (auto it = allocated.begin(); it != allocated.end(); it++){
                     delete it -> second;

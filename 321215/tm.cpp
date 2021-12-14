@@ -35,6 +35,20 @@
 #include "transaction.hpp"
 #include "batcher.hpp"
 #include <iostream>
+#include <string.h>
+
+
+size_t convertToInt(char* a, int size);
+
+// converts character array
+// to string and returns it
+size_t convertToInt(void const * a, size_t size){
+    size_t i;
+    
+    memcpy(&i, a, size);  
+    
+    return i;
+}
 
 
 /** Create (i.e. allocate + init) a new shared memory region, with one first non-free-able allocated segment of the requested size and alignment.
@@ -117,10 +131,16 @@ bool tm_end(shared_t shared, tx_t tx)noexcept {
 bool tm_read(shared_t shared, tx_t tx, void const* source, size_t size, void* target)noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
-    DEBUG_MSG("Transaction " << t->tr_num << " reading");
     bool can_continue = stm->read(t, source, size, target);
+    if (can_continue){
+        DEBUG_MSG("Transaction " << t->tr_num << " successfully read " << convertToInt(target, size) << " in " << size << " bytes from address: " << reinterpret_cast<std::size_t>(source));
+    }
     return can_continue;
 }
+
+
+
+
 
 /** [thread-safe] Write operation in the given transaction, source in a private region and target in the shared region.
  * @param shared Shared memory region associated with the transaction
@@ -133,9 +153,10 @@ bool tm_read(shared_t shared, tx_t tx, void const* source, size_t size, void* ta
 bool tm_write(shared_t shared, tx_t tx, void const* source, size_t size, void* target)noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
-    DEBUG_MSG("Transaction " << t->tr_num << " writing");
-
     bool can_continue = stm->write(t, source, size, target);
+    if (can_continue){
+        DEBUG_MSG("Transaction " << t->tr_num << " successfully wrote " << convertToInt(source, size) << " in " << size << " bytes to address: " << reinterpret_cast<std::size_t>(target));
+    }
     return can_continue;
 }
 

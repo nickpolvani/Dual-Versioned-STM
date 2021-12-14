@@ -1,11 +1,13 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
 #include <iostream>
-#define DEBUG_MSG(str) do { std::cout << str << "\n"; } while( false )
+#include <mutex>
+static std::mutex debug_mutex;
+#define DEBUG_MSG(str) do {debug_mutex.lock(); std::cout << str << "\n"; debug_mutex.unlock();} while( false )
 #else
 #define DEBUG_MSG(str) do { } while ( false )
 #endif

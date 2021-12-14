@@ -39,7 +39,7 @@ Transaction* Batcher::enter(bool is_read_only){
 void Batcher::leave(Transaction* tx){
     std::unique_lock<std::mutex> lock(mutex);
     remaining --;
-
+    DEBUG_MSG("Transaction " << tx->tr_num  << " is leaving batcher. Aborted: " << tx->aborted);
     if(tx -> aborted == false){
         committed_transactions.push_back(tx);
     }
@@ -50,6 +50,7 @@ void Batcher::leave(Transaction* tx){
         }
         // didn't modify anything, deleting..
         else{
+            DEBUG_MSG("Transaction " << tx->tr_num << " didn't modify anything. Destroying...");
             delete tx;
         }
     }
@@ -58,11 +59,17 @@ void Batcher::leave(Transaction* tx){
         onEpochEnd();
         counter ++;
         remaining = blocked.size();
-        for (std::size_t i = blocked.size(); i > 0; i--){
-            blocked.back() -> awake = true;
-            blocked.pop_back(); 
+        if (remaining > 0){
+            DEBUG_MSG("Beginning epoch " << counter << " with " << blocked.size() << " transactions");
+            for (std::size_t i = blocked.size(); i > 0; i--){
+                blocked.back() -> awake = true;
+                blocked.pop_back(); 
+            }
+            cv.notify_all();
         }
-        cv.notify_all();
+        else{
+            DEBUG_MSG("No transactions waiting to enter batcher");
+        }
     }
 }
 
@@ -72,6 +79,9 @@ void Batcher::leave(Transaction* tx){
 // 3) free (on STM) segments that were freed by committed transactions
 // 4) delete all transactions and empty committed/aborted arrays
 void Batcher::onEpochEnd(){
+    DEBUG_MSG("Number comitted transactions: " << committed_transactions.size());
+    DEBUG_MSG("Number aborted transactions: " << aborted_transactions.size());
+
     // add allocated segments
     for (Transaction* tx : committed_transactions){
         for(auto it = tx->allocated.begin(); it != tx->allocated.end(); it++){
@@ -83,11 +93,13 @@ void Batcher::onEpochEnd(){
 
     // update state of accessed words
     for(Transaction* tx : committed_transactions){
+        //DEBUG_MSG("Updating state for " << tx->accessed.size() << " words accessed by committed tx: " << tx->tr_num << " has written: " << tx->has_written);
         for(Word* word : tx->accessed){
             word -> updateState();
         }
     }
     for(Transaction* tx : aborted_transactions){
+       // DEBUG_MSG("Updating state for " << tx->accessed.size() << " words accessed by aborted tx: " << tx->tr_num << " has written: " << tx->has_written);
         for(Word* word: tx->accessed){
             word -> updateState();
         }
@@ -96,12 +108,14 @@ void Batcher::onEpochEnd(){
     // free segments, delete transactions
     for (Transaction* tx: committed_transactions){
         for (std::size_t start_addr : tx->freed){
+            DEBUG_MSG("Freeing segment from committed");
             stm->freeSegment(start_addr);
         }
         delete tx;
     }
     for (Transaction* tx: aborted_transactions){
         for (std::size_t start_addr : tx->freed){
+            DEBUG_MSG("Freeing segment from aborted");
             stm->freeSegment(start_addr);
         }
         delete tx;

@@ -8,8 +8,9 @@ class Transaction;
 
 class Word{
     private:
+        std::mutex word_mutex;
         std::mutex access_set_mutex;
-        
+
         char * copy_a;
         char * copy_b;
 
@@ -26,6 +27,8 @@ class Word{
         bool is_copy_a_readable = true;
 
         std::size_t alignment;
+        std::size_t addr;
+
         // identifier of the last transaction that accessed the word 
         // valid identifiers range from 1 to n
         std::atomic_ulong last_tx_accessed{0};
@@ -35,7 +38,7 @@ class Word{
 
         std::atomic_bool written{false};
 
-        explicit Word(std::size_t i_alignment);
+        explicit Word(std::size_t i_alignment, std::size_t addr);
 
         ~Word(){
             delete[] copy_a;

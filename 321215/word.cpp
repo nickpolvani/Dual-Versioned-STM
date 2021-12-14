@@ -1,9 +1,10 @@
 #include "word.hpp"
 #include "transaction.hpp"
 #include <string.h>
+#include "debug.hpp"
 
-Word::Word(std::size_t i_alignment): 
-alignment(i_alignment){
+Word::Word(std::size_t i_alignment, std::size_t address): 
+alignment(i_alignment), addr(address){
 
     copy_a = new char[alignment]; 
     copy_b = new char[alignment]; 
@@ -13,7 +14,7 @@ alignment(i_alignment){
 
 // add transaction to "access set" if not already in
 void Word::addToAccessSet(Transaction* tx, bool writing){
-    std::unique_lock<std::mutex> lock(access_set_mutex);
+    //std::unique_lock<std::mutex> lock(access_set_mutex);
     if (writing){
         written = true;
     }
@@ -64,6 +65,7 @@ void Word::writeCopy(void const* source){
 
 
 bool Word::read(Transaction* tx, void* target){
+    std::unique_lock<std::mutex> lock(word_mutex);
     if (tx -> is_read_only){
         readCopy(target, true);
         return true;
@@ -94,10 +96,12 @@ bool Word::read(Transaction* tx, void* target){
 
 
 bool Word::write(Transaction* tx, void const* source){
+    std::unique_lock<std::mutex> lock(word_mutex);
     if (written){
         if (last_tx_accessed == tx -> tr_num){
             // write content at source into the writable copy
             writeCopy(source);
+            tx->has_written = true;
             return true;
         }
         else{
@@ -114,6 +118,7 @@ bool Word::write(Transaction* tx, void const* source){
             // write content at source into the writable copy
             addToAccessSet(tx, true);
             writeCopy(source);
+            tx->has_written = true;
             return true;
         }
     }
@@ -123,6 +128,7 @@ bool Word::write(Transaction* tx, void const* source){
 // called at the end of an epoch to update readable/writable copy
 // reset the access set and written condition, swap readable/writable copy if written
 void Word::updateState(){
+    DEBUG_MSG("Updating state of word at address: " << addr << " written: " << written);
     if (written){
         is_copy_a_readable = !is_copy_a_readable;
     }

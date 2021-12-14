@@ -7,8 +7,10 @@ Segment::Segment(std::size_t i_alignment, std::size_t i_num_words, std::size_t i
         alignment(i_alignment), num_words(i_num_words), start_address(i_start_address)
 {
     words = new Word* [num_words];
+    std::size_t addr = start_address;
     for (std::size_t i = 0; i < num_words; i++){
-        words[i] = new Word(alignment);
+        words[i] = new Word(alignment, addr);
+        addr += alignment;
     }
 }
 
