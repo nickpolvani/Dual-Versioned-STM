@@ -83,6 +83,11 @@ class DualStm{
         // End the given transaction.
         // returns true if transaction was committed, false if it was aborted
         bool end(Transaction* tx);
+        
+
+        // used for debugging, checks that all the words have their state set
+        // back to the initial one
+        void checkEpochEnd();
 
 
 };

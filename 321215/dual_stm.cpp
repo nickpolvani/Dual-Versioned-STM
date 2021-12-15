@@ -67,7 +67,11 @@ Segment* DualStm::findSegment(std::size_t address, Transaction* tx){
     if (sg == NULL){
         auto it = addresses.upper_bound(address);
         std::size_t start_addr = it -> second;
-        assert((address >= start_addr) == true);
+        if (address < start_addr){  // segment not found, it has been freed by another transaction
+            //std::cout << "Looking for address: " << address << ".But found segment that starts at: " << start_addr << std::endl << std::flush;
+            return NULL;
+        }
+        //assert((address >= start_addr) == true);
         sg = segments[start_addr];
     }
     return sg;
@@ -89,9 +93,16 @@ Transaction* DualStm::begin(bool is_read_only){
 bool DualStm::read(Transaction* tx, void const * source, std::size_t size, void* target){
     std::size_t addr = reinterpret_cast<std::size_t>(source);
     Segment* sg = findSegment(addr, tx);
-    std::size_t start_word_idx = (addr - sg->start_address) / alignment;
-    std::size_t num_words = size / alignment;
-    bool can_continue = sg->read(start_word_idx, num_words, tx, target);
+    bool can_continue;
+    if (sg != NULL){    
+        std::size_t start_word_idx = (addr - sg->start_address) / alignment;
+        std::size_t num_words = size / alignment;
+        can_continue = sg->read(start_word_idx, num_words, tx, target);
+    }else{ //trying to access freed segment
+        std::cout << "transaction " << tx->tr_num << " from epoch " << tx->epoch << " trying to read address " << addr << " but segment was freed, aborting.\n";
+        assert(false);
+    }
+
     if(!can_continue){
         batcher -> leave(tx);
     }
@@ -107,9 +118,16 @@ bool DualStm::read(Transaction* tx, void const * source, std::size_t size, void*
 bool DualStm::write(Transaction* tx, void const* source, std::size_t size, void * target){
     std::size_t addr = reinterpret_cast<std::size_t>(target);
     Segment* sg = findSegment(addr, tx);
-    std::size_t start_word_idx = (addr - sg->start_address) / alignment;
-    std::size_t num_words = size / alignment;
-    bool can_continue = sg -> write(start_word_idx, num_words, tx, source);
+    bool can_continue;
+    if (sg != NULL){
+        std::size_t start_word_idx = (addr - sg->start_address) / alignment;
+        std::size_t num_words = size / alignment;
+        can_continue = sg -> write(start_word_idx, num_words, tx, source);
+    }
+    else{   //trying to access freed segment
+        std::cout << "transaction " << tx->tr_num << " from epoch " << tx->epoch << " trying to write address " << addr << " but segment was freed, aborting.\n";
+        assert(false);
+    }
     if(!can_continue){
         batcher -> leave(tx);
     }
@@ -146,5 +164,16 @@ bool DualStm::end(Transaction* tx){
     bool committed = !tx->aborted;
     batcher->leave(tx);
     return committed;
+}
+
+
+
+// used for debugging, checks that all the words have their state set
+// back to the initial one
+void DualStm::checkEpochEnd(){
+    for (auto it_s = segments.begin(); it_s != segments.end(); it_s++){
+        Segment* sg = it_s->second;
+        sg->checkEpochEnd();
+    }
 }
 

@@ -17,16 +17,17 @@ void Word::addToAccessSet(Transaction* tx, bool writing){
     //std::unique_lock<std::mutex> lock(access_set_mutex);
     if (writing){
         written = true;
+        tx -> written[addr] = this;
+    }else{
+        tx -> read[addr] = this;
     }
     if (last_tx_accessed == 0){  // first transaction accessing       
         last_tx_accessed = tx -> tr_num;
-        tx -> accessed.push_back(this);
     }
     else{
         if (last_tx_accessed != tx->tr_num){
             accessed_by_many = true;
             last_tx_accessed = tx -> tr_num;
-            tx -> accessed.push_back(this);
         }
     }
 }
@@ -116,8 +117,8 @@ bool Word::write(Transaction* tx, void const* source){
         }
         else{
             // write content at source into the writable copy
-            addToAccessSet(tx, true);
             writeCopy(source);
+            addToAccessSet(tx, true);
             tx->has_written = true;
             return true;
         }
@@ -125,14 +126,16 @@ bool Word::write(Transaction* tx, void const* source){
 }
 
 
-// called at the end of an epoch to update readable/writable copy
-// reset the access set and written condition, swap readable/writable copy if written
-void Word::updateState(){
-    DEBUG_MSG("Updating state of word at address: " << addr << " written: " << written);
-    if (written){
-        is_copy_a_readable = !is_copy_a_readable;
-    }
+// reset the access set and written condition
+void Word::resetState(){
     written = false;
     last_tx_accessed = 0;
     accessed_by_many = false;
+}
+
+
+// reset the access set and written condition, swap readable/writable copy
+void Word::updateWritten(){
+    resetState();
+    is_copy_a_readable = !is_copy_a_readable;
 }

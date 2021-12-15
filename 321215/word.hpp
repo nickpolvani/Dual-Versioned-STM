@@ -51,12 +51,14 @@ class Word{
 
         void addToAccessSet(Transaction* tx, bool writing);
 
-        // called at the end of an epoch to update readable/writable copy
-        // reset the access set and written condition, swap readable/writable copy if written
-        void updateState();
+
+        // reset the access set and written condition
+        void resetState();
+
+        // reset the access set and written condition, swap readable/writable copy
+        void updateWritten();
 
 
-        
 
 };
 

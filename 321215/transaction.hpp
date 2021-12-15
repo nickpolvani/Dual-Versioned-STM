@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include "debug.hpp"
+#include "assert.h"
 
 class Segment;
 class Word;
@@ -13,6 +14,8 @@ class Transaction{
 
     public:
         bool has_written = false;
+
+        std::size_t epoch;        
 
         // allocated[start_address] returns the corresponding Segment
         std::map<std::size_t, Segment*> allocated;
@@ -29,7 +32,9 @@ class Transaction{
         // identifier of the transaction, unique for each transaction in one epoch
         std::size_t tr_num;
 
-        std::vector<Word*> accessed;
+        std::map<std::size_t, Word*> written;
+
+        std::map<std::size_t, Word*> read;
 
         bool aborted = false;
 
@@ -60,15 +65,22 @@ class Transaction{
 
         }
 
-        Transaction(bool is_read_only, std::size_t tr_num): 
-            is_read_only(is_read_only), tr_num(tr_num){};
+        // called at the end of an epoch for committed transaction
+        // update content of written words, reset control structure of read/written words
+        void commit();
+
+        // reset control variables of written/read words
+        void abort();
+
+        Transaction(std::size_t i_epoch, bool is_read_only, std::size_t tr_num): 
+            epoch(i_epoch), is_read_only(is_read_only), tr_num(tr_num){};
 
         // if transaction was committed don't destroy allocated segments, as they are added to the STM
         // if transaction was not committed (aborted = true), destroy allocated segments
         // do not destroy written words, because some of them may be already allocated in the STM
         // and the ones that are not are destroyed with allocated segments
         ~Transaction(){
-            DEBUG_MSG("Inside destructor of transaction: " << tr_num);
+            //DEBUG_MSG("Inside destructor of transaction: " << tr_num);
             if (aborted){
                 for (auto it = allocated.begin(); it != allocated.end(); it++){
                     delete it -> second;
