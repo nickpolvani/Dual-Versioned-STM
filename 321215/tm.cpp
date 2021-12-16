@@ -155,9 +155,9 @@ bool tm_write(shared_t shared, tx_t tx, void const* source, size_t size, void* t
     Transaction* t = reinterpret_cast<Transaction*>(tx);
     bool can_continue = stm->write(t, source, size, target);
     if (can_continue){
-       // DEBUG_MSG("Transaction " << t->tr_num << " successfully wrote " << convertToInt(source, size) << " in " << size << " bytes to address: " << reinterpret_cast<std::size_t>(target));
+       DEBUG_MSG("Transaction " << t->tr_num << " successfully wrote " << convertToInt(source, size) << " in " << size << " bytes to address: " << reinterpret_cast<std::size_t>(target));
     }else{
-       // DEBUG_MSG("Transaction " << t->tr_num << " aborted when writing " << convertToInt(source, size) << " in " << size << " bytes to address: " << reinterpret_cast<std::size_t>(target));
+       DEBUG_MSG("Transaction " << t->tr_num << " aborted when writing " << convertToInt(source, size) << " in " << size << " bytes to address: " << reinterpret_cast<std::size_t>(target));
     }
     return can_continue;
 }
@@ -172,19 +172,20 @@ bool tm_write(shared_t shared, tx_t tx, void const* source, size_t size, void* t
 Alloc tm_alloc(shared_t shared, tx_t tx, size_t size, void** target) noexcept {
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
-    std::cout<<"Transaction " << t->tr_num << " epoch " << t->epoch <<" allocating segment of size " << size << "\n";
+    //std::cout<<"Transaction " << t->tr_num << " epoch " << t->epoch <<" allocating segment of size " << size << "\n";
 
     bool can_continue = stm -> alloc(t, size, target);
     if (can_continue){
         char addr[8];
         memcpy(addr, target, 8);
-        std::cout << "allocated segment of size "  << size << " at address " << convertToInt(addr, 8) << std::endl;
+       // std::cout << "allocated segment of size "  << size << " at address " << convertToInt(addr, 8) << std::endl;
         return Alloc(0);
     }else{
-        std::cout << "Failed allocating segment\n";
+       // std::cout << "Failed allocating segment\n";
         return Alloc(1);
     }
 }
+
 
 /** [thread-safe] Memory freeing in the given transaction.
  * @param shared Shared memory region associated with the transaction
@@ -196,10 +197,10 @@ bool tm_free(shared_t shared, tx_t tx, void* target) noexcept{
     DualStm* stm = reinterpret_cast<DualStm*>(shared);
     Transaction* t = reinterpret_cast<Transaction*>(tx);
     std::size_t addr = reinterpret_cast<std::size_t>(target);
-    std::cout<<"Transaction " << t->tr_num << " epoch " << t->epoch << " freeing segment starting at: " << addr << "\n";
+   // std::cout<<"Transaction " << t->tr_num << " epoch " << t->epoch << " freeing segment starting at: " << addr << "\n";
     bool can_continue = stm->free(t, target);
     if(can_continue){
-        std::cout << "Segment successfully freed from address: " << addr << std::endl;
+        //std::cout << "Segment successfully freed from address: " << addr << std::endl;
     }
     return can_continue;
 }

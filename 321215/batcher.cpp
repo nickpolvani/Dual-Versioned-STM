@@ -3,6 +3,7 @@
 #include "dual_stm.hpp"
 #include "word.hpp"
 #include "debug.hpp"
+#include <iostream>
 
 Batcher::~Batcher(){
     for (auto b : blocked){
@@ -36,12 +37,18 @@ Transaction* Batcher::enter(bool is_read_only){
     }
 }
 
+
 void Batcher::leave(Transaction* tx){
     std::unique_lock<std::mutex> lock(mutex);
+    #ifdef DEBUG
+
     if (remaining == 0){
         DEBUG_MSG("Transaction " << tx->tr_num << " from epoch " << tx->epoch << "is leaving batcher. But remaining is 0!!!" );
+        std::cout << "Decreasing remaining when it is 0!!!"<<std::endl<<std::flush;
         throw std::runtime_error("Decreasing remaining when it is 0");
     }
+
+    #endif
     remaining --;
     DEBUG_MSG("Transaction " << tx->tr_num  << " from epoch " << tx->epoch << " is leaving batcher. Aborted: " << tx->aborted << ".Remaining: " << remaining);
     if(tx -> aborted == false){
@@ -52,9 +59,14 @@ void Batcher::leave(Transaction* tx){
     }
     if (remaining == 0){
         DEBUG_MSG("Ending epoch " << counter);
+
+        #ifdef DEBUG
         if (committed_transactions.size() == 0){
+            std::cout << "No Committed transactions in epoch: " << counter <<std::endl<<std::flush;
             throw std::runtime_error("No Committed transactions in this epoch!!!");
         }
+        #endif
+
         onEpochEnd();
         #ifdef DEBUG
             stm -> checkEpochEnd();
