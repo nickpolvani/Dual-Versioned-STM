@@ -13,7 +13,7 @@ alignment(i_alignment), addr(address){
 }
 
 // add transaction to "access set" if not already in
-void Word::addToAccessSet(Transaction* tx, bool writing){
+inline void Word::addToAccessSet(Transaction* tx, bool writing){
     //std::unique_lock<std::mutex> lock(access_set_mutex);
     if (writing){
         written = true;
@@ -35,7 +35,7 @@ void Word::addToAccessSet(Transaction* tx, bool writing){
 
 // if readable=True read readable copy
 // else read the writable one
-void Word::readCopy(void* target, bool readable){
+inline void Word::readCopy(void* target, bool readable){
     if (readable){
         if(is_copy_a_readable){ // read readable copy
             memcpy(target, copy_a, alignment);
@@ -56,7 +56,7 @@ void Word::readCopy(void* target, bool readable){
 
 
 // write content of buffer source into writable copy
-void Word::writeCopy(void const* source){
+inline void Word::writeCopy(void const* source){
     if(!is_copy_a_readable){
         memcpy(copy_a, source, alignment);
     }else{
@@ -66,13 +66,14 @@ void Word::writeCopy(void const* source){
 
 
 bool Word::read(Transaction* tx, void* target){
-    std::unique_lock<std::mutex> lock(word_mutex);
     if (tx -> is_read_only){
         readCopy(target, true);
         return true;
     }
     // tx is not read_only
     else{
+        std::unique_lock<std::mutex> lock(word_mutex);
+
         if (written){
             if (last_tx_accessed == tx->tr_num){
                 // read writable copy into target

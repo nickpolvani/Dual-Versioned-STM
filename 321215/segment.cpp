@@ -45,6 +45,7 @@ bool Segment::write(std::size_t start_word_idx, std::size_t num_words, Transacti
             return false;
         }
     }
+    delete in_buffer;
     return true;
 }
 
